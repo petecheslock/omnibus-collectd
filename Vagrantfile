@@ -19,7 +19,7 @@ Vagrant.configure("2") do |config|
     c.berkshelf.berksfile_path = "./Berksfile"
     #c.vm.box = "canonical-ubuntu-12.04"
     #c.vm.box_url = "http://cloud-images.ubuntu.com/vagrant/precise/current/precise-server-cloudimg-amd64-vagrant-disk1.box"
-    c.vm.box = "opscode-ubuntu-12.04"
+    c.vm.box = "ubuntu-12.04_chef-11.8.0"
     c.vm.box_url = "https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode_ubuntu-12.04_provisionerless.box"
 
   end
@@ -47,8 +47,6 @@ Vagrant.configure("2") do |config|
   # The path to the Berksfile to use with Vagrant Berkshelf
   config.berkshelf.berksfile_path = "./Berksfile"
 
-  config.ssh.max_tries = 40
-  config.ssh.timeout   = 120
   config.ssh.forward_agent = true
 
   host_project_path = File.expand_path("..", __FILE__)
@@ -58,6 +56,7 @@ Vagrant.configure("2") do |config|
 
   # prepare VM to be an Omnibus builder
   config.vm.provision :chef_solo do |chef|
+    chef.log_level = :info
     chef.json = {
       "omnibus" => {
         "build_user" => "vagrant",
