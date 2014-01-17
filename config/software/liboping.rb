@@ -37,5 +37,4 @@ build do
 
   command "make -j #{max_build_jobs}", :env => env
   command "make install", :env => env
-#  command "rm #{install_dir}/embedded/bin/noping"
 end
