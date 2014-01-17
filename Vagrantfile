@@ -10,74 +10,104 @@ end
 host_project_path = File.expand_path("..", __FILE__)
 guest_project_path = "/home/vagrant/#{File.basename(host_project_path)}"
 project_name = "collectd"
+host_name = "#{project_name}-omnibus-build-lab"
 
 Vagrant.configure("2") do |config|
 
-  config.vm.hostname = "#{project_name}-omnibus-build-lab"
+  %w{
+    freebsd-8.1_chef-11.4.4
+    debian-6.0.8_chef-11.8.0
+    ubuntu-12.04_chef-11.8.0
+  }.each_with_index do |platform, index|
 
-  config.vm.define 'ubuntu-12.04' do |c|
-    c.berkshelf.berksfile_path = "./Berksfile"
-    #c.vm.box = "canonical-ubuntu-12.04"
-    #c.vm.box_url = "http://cloud-images.ubuntu.com/vagrant/precise/current/precise-server-cloudimg-amd64-vagrant-disk1.box"
-    c.vm.box = "ubuntu-12.04_chef-11.8.0"
-    c.vm.box_url = "https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode_ubuntu-12.04_provisionerless.box"
+    config.vm.define platform do |c|
 
-  end
+      case platform
 
-  config.vm.define 'centos-6' do |c|
-    c.berkshelf.berksfile_path = "./Berksfile"
-    c.vm.box = "opscode-centos-6.4"
-    c.vm.box_url = "https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode_centos-6.4_provisionerless.box"
-  end
+      ####################################################################
+      # FREEBSD-SPECIFIC CONFIG
+      ####################################################################
+      when /freebsd/
 
-  config.vm.provider :virtualbox do |vb|
-    # Give enough horsepower to build without taking all day.
-    vb.customize [
-      "modifyvm", :id,
-      "--memory", "4096",
-      "--cpus", "2"
-    ]
-  end
+        use_nfs = true
 
-  # Ensure a recent version of the Chef Omnibus packages are installed
-  config.omnibus.chef_version = :latest
+        # FreeBSD"s mount_nfs does not like paths over 88 characters
+        # http://lists.freebsd.org/pipermail/freebsd-hackers/2012-April/038547.html
+        ENV["BERKSHELF_PATH"] = File.join("/tmp")
+        bootstrap_chef_version = "11.4.4"
 
-  # Enable the berkshelf-vagrant plugin
-  config.berkshelf.enabled = true
-  # The path to the Berksfile to use with Vagrant Berkshelf
-  config.berkshelf.berksfile_path = "./Berksfile"
+        major_version = platform.split(/freebsd-(.*)\..*/).last
 
-  config.ssh.forward_agent = true
+        c.vm.guest = :freebsd
+        c.vm.box = platform
+        c.vm.network :private_network, :ip => "33.33.33.#{50 + index}"
 
-  host_project_path = File.expand_path("..", __FILE__)
-  guest_project_path = "/home/vagrant/#{File.basename(host_project_path)}"
+        c.vm.provision :shell, :inline => <<-FREEBSD_SETUP
+          sed -i "" -E "s%^([^#].*):setenv=%\1:setenv=PACKAGESITE=ftp://ftp.freebsd.org/pub/FreeBSD/ports/amd64/packages-#{major_version}-stable/Latest,%" /etc/login.conf
+        FREEBSD_SETUP
 
-  config.vm.synced_folder host_project_path, guest_project_path
+      ####################################################################
+      # LINUX-SPECIFIC CONFIG
+      ####################################################################
+      else
+        bootstrap_chef_version = "11.8.0"
+        use_nfs = false
 
-  # prepare VM to be an Omnibus builder
-  config.vm.provision :chef_solo do |chef|
-    chef.log_level = :info
-    chef.json = {
-      "omnibus" => {
-        "build_user" => "vagrant",
-        "build_dir" => guest_project_path,
-        "install_dir" => "/opt/#{project_name}"
-      }
-    }
+        c.vm.box = platform
+        c.omnibus.chef_version = bootstrap_chef_version
 
-    chef.run_list = [
-      "recipe[omnibus::default]"
-    ]
-  end
+        c.vm.provider :virtualbox do |vb|
+          # Give enough horsepower to build without taking all day.
+          vb.customize [
+            "modifyvm", :id,
+            "--memory", "1536",
+            "--cpus", "2"
+          ]
+        end
 
-  config.vm.provision :shell, :inline => <<-CHEF_APPLY
-    chef-apply -e 'package "unzip"'
-  CHEF_APPLY
+      end # case
 
-  config.vm.provision :shell, :inline => <<-OMNIBUS_BUILD
-    export PATH=/usr/local/bin:$PATH
-    cd #{guest_project_path}
-    su vagrant -c "bundle install --binstubs"
-    su vagrant -c "bin/omnibus build project #{project_name}"
-  OMNIBUS_BUILD
-end
+      ####################################################################
+      # CONFIG SHARED ACROSS ALL PLATFORMS
+      ####################################################################
+
+      config.berkshelf.enabled = true
+      config.ssh.forward_agent = true
+
+      config.vm.synced_folder ".", "/vagrant", :id => "vagrant-root", :nfs => use_nfs
+      config.vm.synced_folder host_project_path, guest_project_path, :nfs => use_nfs
+
+      # Uncomment for DEV MODE
+      # config.vm.synced_folder File.expand_path("../../omnibus-ruby", __FILE__), "/home/vagrant/omnibus-ruby", :nfs => use_nfs
+      # config.vm.synced_folder File.expand_path("../../omnibus-software", __FILE__), "/home/vagrant/omnibus-software", :nfs => use_nfs
+
+      # prepare VM to be an Omnibus builder
+      config.vm.provision :chef_solo do |chef|
+        chef.nfs = use_nfs
+        chef.json = {
+          "omnibus" => {
+            "build_user" => "vagrant",
+            "build_dir" => guest_project_path,
+            "install_dir" => "/opt/#{project_name}"
+          }
+        }
+
+        chef.run_list = [
+          "recipe[omnibus::default]"
+        ]
+      end
+
+      config.vm.provision :shell, :inline => <<-CHEF_APPLY
+        chef-apply -e 'package "unzip"'
+      CHEF_APPLY
+
+      config.vm.provision :shell, :inline => <<-OMNIBUS_BUILD
+        export PATH=/usr/local/bin:$PATH
+        cd #{guest_project_path}
+        su vagrant -c "bundle install --binstubs"
+        su vagrant -c "bin/omnibus build project #{project_name}"
+      OMNIBUS_BUILD
+
+    end # config.vm.define.platform
+  end # each_with_index
+end # Vagrant.configure

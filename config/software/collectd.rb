@@ -79,7 +79,7 @@ build do
   # this is cleanup.
   # the cmake binaries are effing huge.
   # at this point collectd is built and we don't need them anymore
-  %w{ccmake cmake cpack ctest}.each do |bigbin|
+  %w{cmake cpack ctest}.each do |bigbin|
     command "rm #{install_dir}/embedded/bin/#{bigbin}"
   end
 end
