@@ -3,9 +3,26 @@
 
 require "vagrant"
 
-if Vagrant::VERSION < "1.2.1"
-  raise "The Omnibus Build Lab is only compatible with Vagrant 1.2.1+"
+if Vagrant::VERSION < "1.4.0"
+  raise "The Omnibus Build Lab is only compatible with Vagrant 1.4.0+"
 end
+
+# This is fixed as part of vagrant 1.5 - monkeypatch it here
+# This allows freebsd NFS shared folders to work
+require Vagrant.source_root.join("plugins", "provisioners", "chef", "provisioner", "chef_solo")
+class VagrantPlugins::Chef::Provisioner::ChefSolo
+  def share_folders(root_config, prefix, folders)
+    folders.each do |type, local_path, remote_path|
+      if type == :host
+        root_config.vm.synced_folder(
+        local_path, remote_path,
+        :id =>  "v-#{prefix}-#{self.class.get_and_update_counter(:shared_folder)}",
+        :type => (@config.nfs ? :nfs : nil))
+      end
+    end
+  end
+end
+#
 
 host_project_path = File.expand_path("..", __FILE__)
 guest_project_path = "/home/vagrant/#{File.basename(host_project_path)}"
@@ -60,7 +77,7 @@ Vagrant.configure("2") do |config|
           # Give enough horsepower to build without taking all day.
           vb.customize [
             "modifyvm", :id,
-            "--memory", "2048",
+            "--memory", "3072",
             "--cpus", "2"
           ]
         end
@@ -105,8 +122,9 @@ Vagrant.configure("2") do |config|
       config.vm.provision :shell, :inline => <<-OMNIBUS_BUILD
         export PATH=/usr/local/bin:$PATH
         cd #{guest_project_path}
+        su vagrant -c "curl http://curl.haxx.se/ca/cacert.pem > ~/cacert.pem"
         su vagrant -c "bundle install --binstubs"
-        su vagrant -c "bin/omnibus build project #{project_name}"
+        su vagrant -c "SSL_CERT_FILE=/home/vagrant/cacert.pem bin/omnibus build project #{project_name}"
       OMNIBUS_BUILD
 
     end # config.vm.define.platform

@@ -21,11 +21,10 @@ version "5.4.0"
 dependency "cmake"
 dependency "libyajl"
 dependency "zlib"
-dependency "libedit"
-dependency "protobuf-c"
 dependency "credis"
 dependency "libgcrypt"  # Used by ???
 dependency "libpcap"
+dependency "libkvm" #don't judge me
 
 # Curl JSON and XML plugins
 dependency "curl"
@@ -56,7 +55,6 @@ plugin_opts = [
   "--enable-curl_json",
   "--enable-curl_xml",
   "--enable-ping --with-liboping=#{install_dir}/embedded",
-  "--enable-write_riemann",
   "--enable-write_http",
   "--enable-write_graphite",
   "--enable-write_redis",
