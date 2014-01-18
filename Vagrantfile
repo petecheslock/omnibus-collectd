@@ -57,6 +57,7 @@ Vagrant.configure("2") do |config|
 
         c.vm.guest = :freebsd
         c.vm.box = platform
+        c.vm.box_url = "http://dyn-vm.s3.amazonaws.com/vagrant/#{platform}.box"
         c.vm.network :private_network, :ip => "33.33.33.#{50 + index}"
 
         c.vm.provision :shell, :inline => <<-FREEBSD_SETUP
@@ -71,6 +72,7 @@ Vagrant.configure("2") do |config|
         use_nfs = false
 
         c.vm.box = platform
+        c.vm.box_url = "http://dyn-vm.s3.amazonaws.com/vagrant/#{platform}.box"
         c.omnibus.chef_version = bootstrap_chef_version
 
         c.vm.provider :virtualbox do |vb|
