@@ -32,6 +32,8 @@ Vagrant.configure("2") do |config|
 
   %w{
     freebsd-8.1_chef-11.4.4
+    freebsd-8.3_chef-11.4.4
+    freebsd-9.1_chef-11.8.0
     debian-6.0.8_chef-11.8.0
     ubuntu-12.04_chef-11.8.0
   }.each_with_index do |platform, index|
