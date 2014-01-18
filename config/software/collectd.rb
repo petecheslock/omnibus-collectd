@@ -20,6 +20,8 @@ version "5.4.0"
 
 dependency "cmake"
 dependency "libyajl"
+dependency "zlib"
+dependency "libedit"
 dependency "protobuf-c"
 dependency "credis"
 dependency "libgcrypt"  # Used by ???

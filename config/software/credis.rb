@@ -32,7 +32,14 @@ env = {
 }
 
 build do
-  command "make"
+  if platform == "freebsd"
+    patch :source => "freebsd-credis-0.2.3-trunk.patch"
+    make_cmd = "gmake"
+  else
+    make_cmd = "make"
+  end
+
+  command make_cmd
   command "#{install_dir}/embedded/bin/rsync -a libcredis.so #{install_dir}/embedded/lib/"
   command "#{install_dir}/embedded/bin/rsync -a libcredis.a #{install_dir}/embedded/lib/"
   command "#{install_dir}/embedded/bin/rsync -a credis.h #{install_dir}/embedded/include/"

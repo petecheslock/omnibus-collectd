@@ -20,7 +20,7 @@ version "rabbitmq-c-v0.3.0"
 
 dependencies ["autoconf", "automake", "libtool"]
 
-source :git => "https://github.com/alanxz/rabbitmq-c.git"
+source :git => "git://github.com/alanxz/rabbitmq-c.git"
 
 reconf_env = {"PATH" => "#{install_dir}/embedded/bin:#{ENV["PATH"]}"}
 
